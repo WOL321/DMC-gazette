@@ -1,0 +1,75 @@
+{
+  "volume": 1,
+  "issue": 1,
+  "articles": [
+    {
+      "id": "peace-accord-colombia-china",
+      "placement": "lead",
+      "category": "Diplomacy",
+      "headline": "Southern Powers Sign Accord Against Far Eastern Federation",
+      "byline": "By Our Diplomatic Correspondent · Filed From Pijao",
+      "body": [
+        "A new peace accord between the Colombian Empire and China has redrawn the lines of southern politics this season, formalizing what both governments describe as a shared stance against the Far Eastern Federation rather than a conventional mutual-defense pact.",
+        "Colombian officials say the agreement was signed shortly after the Empire's independent push into South America, and represents less a promise of troops than a promise of alignment: the two powers have agreed to rally against one common target, leaving each free to conduct its own affairs elsewhere on the map.",
+        "The Federation has not issued a formal response. Its reputation on the server, however, precedes it — a leadership record that correspondents across several nations describe as having driven players to quit the game outright is cited by both Colombian and Chinese officials as the accord's underlying justification.",
+        "Colombia's existing circle of allies — Central America, the United States, and China chief among them — remains otherwise unchanged. Officials in Pijao describe the rest of the server's nations as neutral ground by default: no conflict, no treaty, simply unclaimed diplomatic territory.",
+        "The Gazette will continue to follow developments as other nations weigh whether to align, abstain, or wait the Federation's reputation out."
+      ]
+    },
+    {
+      "id": "paramaribo-founded",
+      "placement": "side",
+      "category": "Settlement",
+      "headline": "New Coastal Town of Paramaribo Joins the Empire",
+      "byline": "Staff Report",
+      "body": [
+        "Founded just this week under Mayor OnlyADonut, Paramaribo becomes the Colombian Empire's newest settlement — its thirtieth town by the Crown's own count, and a sign the Empire's expansion shows no sign of slowing."
+      ]
+    },
+    {
+      "id": "pijao-market-growth",
+      "placement": "side",
+      "category": "Economy",
+      "headline": "Pijao's Underground Mall Draws Traders From Across the Region",
+      "byline": "Staff Report",
+      "body": [
+        "Beneath the Empire's coastal capital, a structured network of player shops continues to expand, with Crown officials citing it as a primary source of treasury funding — and, increasingly, a destination in its own right."
+      ]
+    },
+    {
+      "id": "salento-villas",
+      "placement": "grid",
+      "category": "Culture",
+      "headline": "Salento's Sandstone Villas Reach Completion",
+      "byline": "Staff Report",
+      "body": [
+        "Long a passion project of one of Colombia's oldest residents, Salento's distinctive sandstone architecture has become a quiet point of pride for a nation better known for its coastline than its craftsmanship."
+      ]
+    },
+    {
+      "id": "activity-law",
+      "placement": "grid",
+      "category": "Governance",
+      "headline": "Imperial Activity Law Trims Rolls, Draws Little Complaint",
+      "byline": "Staff Report",
+      "body": [
+        "A recent enforcement of Colombia's activity requirements removed roughly a fifth of the nation's registered population. Officials say the response from citizens has been largely one of understanding rather than outrage."
+      ]
+    },
+    {
+      "id": "call-for-writers",
+      "placement": "grid",
+      "category": "Call for Writers",
+      "headline": "The Gazette Is Looking For You",
+      "byline": "From the Editors",
+      "body": [
+        "This is Issue No. 1 — and it's Colombia-heavy because that's who's written in so far. Every nation on the server has a newsroom seat waiting. Elections, wars, market reports, gossip: if it happened on DMC, it belongs here."
+      ]
+    }
+  ],
+  "classifieds": [
+    { "tag": "Land", "text": "Founding grants of 100–200 gold available to citizens establishing a new colony town. Inquire with the Crown." },
+    { "tag": "Notice", "text": "By imperial edict: unused land is subject to reclamation. Build, trade, or move on." },
+    { "tag": "Wanted", "text": "Correspondents in every nation. The Gazette prints what its citizens send it — send yours." }
+  ]
+}
