@@ -1,0 +1,65 @@
+name: Gazette watch (detect + draft)
+
+on:
+  schedule:
+    # Every 30 minutes. Same caveat as always with GitHub's scheduler: it can
+    # drift under load, don't expect exact timing.
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {} # lets you trigger it manually from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Detect Minecraft/Towny changes
+        run: node scripts/detect-mc-changes.js
+
+      - name: Detect Discord changes
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_CHANNEL_IDS: ${{ secrets.DISCORD_CHANNEL_IDS }}
+        run: node scripts/detect-discord-changes.js
+
+      - name: Draft articles from anything detected
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node scripts/draft-articles.js
+
+      - name: Notify Discord if new drafts are ready
+        if: always()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "No DISCORD_WEBHOOK_URL set — skipping notification."
+            exit 0
+          fi
+          NEW_DRAFTS=$(git status --porcelain drafts/ | grep '^??' | wc -l | tr -d ' ')
+          if [ "$NEW_DRAFTS" -gt 0 ]; then
+            curl -s -X POST "$DISCORD_WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d "{\"content\": \"📰 The Gazette has $NEW_DRAFTS new draft article file(s) waiting for review in the drafts/ folder.\"}"
+          fi
+
+      - name: Commit any changes
+        run: |
+          git config user.name "gazette-watch-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/ drafts/
+          if git diff --staged --quiet; then
+            echo "Nothing to commit this run."
+            exit 0
+          fi
+          git commit -m "chore: gazette watch update [skip ci]"
+          git push
