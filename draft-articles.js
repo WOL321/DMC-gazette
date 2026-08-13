@@ -25,17 +25,25 @@ const MODEL = 'claude-sonnet-5'; // check docs.claude.com if this ever needs upd
 const PENDING_PATH = path.join(__dirname, '..', 'data', 'pending-changes.json');
 const DRAFTS_DIR = path.join(__dirname, '..', 'drafts');
 
-const SYSTEM_PROMPT = `You are a staff writer for The DMC Gazette, an in-character newspaper covering the nations of the DiplomaticaMC Minecraft server. Your job is to turn raw event data (new towns founded, residents joining/leaving, Discord chatter) into short newspaper-style articles matching the Gazette's established voice.
+const SYSTEM_PROMPT = `You are a staff writer for The DMC Gazette, an in-character newspaper covering the nations of the DiplomaticaMC Minecraft server. Your job is to turn raw event data into short newspaper-style articles matching the Gazette's established voice.
+
+YOUR TWO INPUT TYPES, HANDLED DIFFERENTLY:
+1. Minecraft/Towny data (new towns, residents joining/leaving) — this is structured fact data, safe to report directly.
+2. Discord tips from named community members — these are real people reporting real events they witnessed. Treat each tip as a primary source, like a reporter's source, NOT as raw material to embellish.
+
+HARD RULE — DO NOT INVENT: Never add people, events, causes, outcomes, quotes, or details that are not explicitly present in the input. If a tip says "Paramaribo got attacked," you may write that Paramaribo was attacked — you may NOT invent who attacked it, why, casualties, or the outcome unless the tip says so. A short, honest, thin article is always correct. A longer, embellished, partially-invented article is always wrong, no matter how much better it reads. When in doubt, write less.
+
+CREDITING — REQUIRED: For every article, include a "sourceAuthor" field:
+- If the article is based on a Discord tip from a named person, set "sourceAuthor" to that person's exact username as given in the input. Do NOT write a byline yourself for these — the publishing script will format it as "Reported by [username]" automatically.
+- If the article is based only on Minecraft/Towny data with no Discord tip behind it, set "sourceAuthor" to null and write "byline": "Staff Report".
 
 VOICE AND STYLE:
 - Journalistic, slightly formal, in-universe (write as if this is a real world with real politics, not "a Minecraft server")
 - Never break character to mention Minecraft, plugins, servers, or game mechanics directly
-- Bylines are either a named correspondent role ("By Our Diplomatic Correspondent") or "Staff Report"
 - Categories used so far: Diplomacy, Settlement, Economy, Culture, Governance, War, Call for Writers — reuse these where they fit, or propose a new one if genuinely needed
-- Keep articles factual and grounded in the input data. Do NOT invent people, events, or details not present in the input.
 - For "side" and "grid" placement articles, write exactly ONE paragraph.
-- For "lead" placement (only use this if the change is genuinely significant — a new town is NOT lead-worthy, a major political shift might be), write 3-5 paragraphs.
-- If the input data is thin (e.g. a single resident joining a town), write a brief, modest article — don't inflate small events into dramatic ones.
+- For "lead" placement (only use this if the change is genuinely significant), write 3-5 paragraphs — but only if the input actually contains enough real detail to fill that space without inventing. If it doesn't, use "side" or "grid" instead, even for a significant-sounding event.
+- If the input data is thin (e.g. a single resident joining a town, or a one-line tip), write a brief, modest article — don't inflate small events into dramatic ones.
 
 OUTPUT FORMAT: Respond with ONLY a JSON array (no markdown fences, no commentary) of article objects, each matching this shape:
 {
@@ -43,10 +51,11 @@ OUTPUT FORMAT: Respond with ONLY a JSON array (no markdown fences, no commentary
   "placement": "lead" | "side" | "grid",
   "category": "string",
   "headline": "string",
-  "byline": "string",
+  "byline": "string (only used if sourceAuthor is null — write \\"Staff Report\\")",
+  "sourceAuthor": "string or null",
   "body": ["paragraph 1", "paragraph 2", ...]
 }
-If there's truly nothing worth a full article (e.g. only bot noise in the Discord data), return an empty array [].`;
+If there's truly nothing worth a full article (e.g. only bot noise, or a tip too vague to write anything factual from), return an empty array [].`;
 
 function loadJson(filePath, fallback) {
   try {
@@ -57,18 +66,26 @@ function loadJson(filePath, fallback) {
 }
 
 function summarizeChangesForPrompt(pending) {
-  const lines = [];
+  const sections = [];
+
+  const mcLines = [];
   for (const c of pending.minecraft || []) {
-    if (c.type === 'new_town') lines.push(`- New town founded: "${c.town}", mayor ${c.mayor}, ${c.residentCount} resident(s).`);
-    else if (c.type === 'new_resident') lines.push(`- ${c.username} joined the town of ${c.town}.`);
-    else if (c.type === 'new_mayor') lines.push(`- ${c.username} became mayor of ${c.town}.`);
-    else if (c.type === 'resident_left') lines.push(`- ${c.username} left the town of ${c.town}.`);
-    else if (c.type === 'town_lost') lines.push(`- The town of ${c.town} no longer appears on the map (disbanded or fell).`);
+    if (c.type === 'new_town') mcLines.push(`- New town founded: "${c.town}", mayor ${c.mayor}, ${c.residentCount} resident(s).`);
+    else if (c.type === 'new_resident') mcLines.push(`- ${c.username} joined the town of ${c.town}.`);
+    else if (c.type === 'new_mayor') mcLines.push(`- ${c.username} became mayor of ${c.town}.`);
+    else if (c.type === 'resident_left') mcLines.push(`- ${c.username} left the town of ${c.town}.`);
+    else if (c.type === 'town_lost') mcLines.push(`- The town of ${c.town} no longer appears on the map (disbanded or fell).`);
   }
-  for (const m of pending.discord || []) {
-    lines.push(`- Discord message from ${m.author}: "${m.content}"`);
+  if (mcLines.length) {
+    sections.push(`=== MINECRAFT/TOWNY DATA (structured facts, safe to report directly) ===\n${mcLines.join('\n')}`);
   }
-  return lines.join('\n');
+
+  const discordLines = (pending.discord || []).map(m => `- ${m.author} reported: "${m.content}"`);
+  if (discordLines.length) {
+    sections.push(`=== DISCORD TIPS FROM NAMED COMMUNITY MEMBERS (primary sources — report ONLY what each person actually said, do not add details) ===\n${discordLines.join('\n')}`);
+  }
+
+  return sections.join('\n\n');
 }
 
 async function draftArticles(changesSummary) {
@@ -99,7 +116,16 @@ async function draftArticles(changesSummary) {
   let cleaned = textBlock.text.trim();
   // Defensive: strip markdown fences if the model adds them despite instructions.
   cleaned = cleaned.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-  return JSON.parse(cleaned);
+  const articles = JSON.parse(cleaned);
+  if (!Array.isArray(articles)) throw new Error('Model response was not a JSON array.');
+
+  // Enforce the crediting format in code rather than trusting the model to
+  // get it right every time — this is the part that actually matters for
+  // trust, so it shouldn't depend on the model following instructions.
+  return articles.map(a => ({
+    ...a,
+    byline: a.sourceAuthor ? `Reported by ${a.sourceAuthor}` : (a.byline || 'Staff Report'),
+  }));
 }
 
 async function main() {
